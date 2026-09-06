@@ -124,6 +124,9 @@ article{padding:20px 0;border-bottom:1px solid var(--line)}
 .sec p{color:var(--dim);font-size:12.5px;margin:0 0 14px;line-height:1.6}
 .sec .f{margin-bottom:14px}
 .sec .f input{width:100%;max-width:420px}
+#s-pastearea{width:100%;max-width:420px;min-height:120px;margin-top:14px;border:1px solid var(--line);
+  padding:10px;font-size:11.5px;line-height:1.5;color:var(--dim);resize:vertical}
+#s-pastearea:focus{border-color:var(--dim);color:var(--fg)}
 .log{font-size:11.5px;color:var(--dim);white-space:pre-wrap;margin-top:12px;line-height:1.6}
 .log.err{color:var(--warn)}
 </style>
@@ -203,8 +206,13 @@ article{padding:20px 0;border-bottom:1px solid var(--line)}
         <button id="s-exp-json">exporter (.json)</button>
         <button id="s-exp-txt">exporter (.txt)</button>
         <button id="s-imp">importer un .json</button>
+        <button id="s-paste">coller un journal</button>
       </div>
       <input id="s-file" type="file" accept="application/json,.json" class="hide">
+      <div id="s-pastebox" class="hide">
+        <textarea id="s-pastearea" placeholder="colle ici le contenu d'un journal (.json)" spellcheck="false"></textarea>
+        <div class="tools"><button id="s-pasteok">importer ce contenu</button></div>
+      </div>
       <div class="log" id="s-log2"></div>
     </div>
     <div class="sec">
@@ -655,12 +663,20 @@ function exportTxt(){
   download("journal-" + new Date().toISOString().slice(0,10) + ".txt",
     (S.cfg.title||"journal") + "\n\n\n" + out, "text/plain;charset=utf-8");
 }
-async function importJson(file){
-  const txt = await file.text();
+async function importJson(src){
+  const txt = typeof src === "string" ? src : await src.text();
   const data = JSON.parse(txt);
-  const incoming = (data.entries || []).map(e=> Object.assign({
-    id: e.id || uid(), createdAt: e.createdAt || Date.now(), updatedAt: e.updatedAt || Date.now(), deleted: !!e.deleted
-  }, e));
+  // identifiant stable : réimporter le même fichier ne crée pas de doublons,
+  // et updatedAt bas pour qu'une modification faite ici ne soit jamais écrasée par un réimport.
+  const incoming = (data.entries || []).map(e=>{
+    const o = Object.assign({}, e);
+    o.id = e.id || (Number.isFinite(e.num) ? "n" + e.num : "h" + (String(e.date||"") + "|" + String(e.texte||"").slice(0,40)).replace(/\W+/g,"").slice(0,24));
+    o.createdAt = e.createdAt || Date.now();
+    o.updatedAt = e.updatedAt || 1;
+    o.deleted = !!e.deleted;
+    o.media = e.media || [];
+    return o;
+  });
   for(const e of incoming){
     if(e.media) e.media = e.media.map(m=>{
       if(m.t === "img_inline"){
@@ -767,6 +783,15 @@ $("#s-sync").onclick    = ()=>{ $("#settings").classList.add("hide"); sync(true)
 $("#s-exp-json").onclick= exportJson;
 $("#s-exp-txt").onclick = exportTxt;
 $("#s-imp").onclick     = ()=> $("#s-file").click();
+$("#s-paste").onclick   = ()=>{ $("#s-pastebox").classList.toggle("hide"); $("#s-pastearea").focus(); };
+$("#s-pasteok").onclick = async ()=>{
+  const txt = $("#s-pastearea").value.trim();
+  if(!txt) return;
+  try{
+    await importJson(txt);
+    $("#s-pastearea").value = ""; $("#s-pastebox").classList.add("hide");
+  }catch(e){ $("#s-log2").className = "log err"; $("#s-log2").textContent = "contenu illisible : " + String(e.message||e); }
+};
 $("#s-file").onchange   = async (ev)=>{
   const f = ev.target.files && ev.target.files[0]; ev.target.value = "";
   if(!f) return;
