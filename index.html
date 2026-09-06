@@ -1,0 +1,780 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="robots" content="noindex,nofollow">
+<title>journal</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<style>
+:root{
+  --bg:#0a0a0b; --fg:#e6e4df; --dim:#76736c; --dimmer:#4a4842;
+  --line:#1d1d1f; --panel:#111112; --warn:#d98c5f;
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "DejaVu Sans Mono", monospace;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
+body{
+  font-family:var(--mono); font-size:14px; line-height:1.6;
+  padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom);
+  overflow-wrap:break-word;
+}
+button,input,textarea,select{font:inherit;color:inherit;background:transparent;border:0;outline:0}
+button{cursor:pointer}
+a{color:inherit}
+.hide{display:none !important}
+
+/* ---------- verrou ---------- */
+#lock{position:fixed;inset:0;background:var(--bg);z-index:60;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:26px;padding:24px}
+#lock .t{color:var(--dim);font-size:13px;letter-spacing:.14em}
+#dots{display:flex;gap:16px}
+#dots i{width:11px;height:11px;border:1px solid var(--dim);border-radius:50%;display:block}
+#dots i.on{background:var(--fg);border-color:var(--fg)}
+#lock.bad #dots{animation:shake .3s}
+@keyframes shake{25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+#pad{display:grid;grid-template-columns:repeat(3,68px);gap:12px}
+#pad button{height:60px;border:1px solid var(--line);border-radius:3px;font-size:19px;color:var(--fg)}
+#pad button:active{background:var(--panel)}
+#pad button.ghost{border-color:transparent;color:var(--dim);font-size:13px}
+
+/* ---------- entête ---------- */
+header{position:sticky;top:0;z-index:20;background:var(--bg);
+  border-bottom:1px solid var(--line);padding:14px 16px 10px}
+.hrow{display:flex;align-items:baseline;gap:10px}
+h1{margin:0;font-size:15px;font-weight:600;letter-spacing:.02em;flex:1}
+#status{font-size:11px;color:var(--dimmer);letter-spacing:.06em;white-space:nowrap}
+#status.busy{color:var(--dim)}
+#status.err{color:var(--warn)}
+.icon{font-size:12px;color:var(--dim);padding:2px 6px;letter-spacing:.06em}
+
+/* ---------- barre des années ---------- */
+#years{position:sticky;top:0;z-index:19;background:var(--bg);border-bottom:1px solid var(--line);
+  display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;padding:8px 10px}
+#years::-webkit-scrollbar{display:none}
+#years button{color:var(--dimmer);font-size:12.5px;padding:4px 8px;border-radius:2px;white-space:nowrap;letter-spacing:.04em}
+#years button.on{color:var(--bg);background:var(--fg)}
+
+/* ---------- feed ---------- */
+main{padding:6px 16px 120px;max-width:720px;margin:0 auto}
+.yr{color:var(--dimmer);font-size:12px;letter-spacing:.22em;margin:30px 0 4px;
+  border-bottom:1px solid var(--line);padding-bottom:6px}
+.yr:first-child{margin-top:14px}
+article{padding:20px 0;border-bottom:1px solid var(--line)}
+.meta{color:var(--dim);font-size:12px;letter-spacing:.05em;margin-bottom:10px;
+  display:flex;gap:10px;align-items:center}
+.meta .n{color:var(--fg)}
+.meta .sp{flex:1}
+.txt{white-space:pre-wrap}
+.txt a{color:var(--dim);text-underline-offset:2px}
+.med{margin-top:14px;display:flex;flex-direction:column;gap:10px}
+.med img{max-width:100%;display:block;border:1px solid var(--line)}
+.yt{position:relative;border:1px solid var(--line);display:block;background:var(--panel)}
+.yt img{width:100%;display:block;border:0;opacity:.72}
+.yt span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:var(--fg);font-size:12px;letter-spacing:.12em}
+.yt iframe{width:100%;aspect-ratio:16/9;display:block;border:0}
+.act{margin-top:12px;display:flex;gap:14px}
+.act button{color:var(--dimmer);font-size:11.5px;letter-spacing:.08em}
+.act button:active{color:var(--fg)}
+.act .del{color:var(--dimmer)}
+.confirm{color:var(--warn);font-size:11.5px;letter-spacing:.08em}
+.empty{color:var(--dim);padding:60px 0;text-align:center;font-size:13px}
+
+/* ---------- bouton + ---------- */
+#add{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));z-index:25;
+  width:56px;height:56px;border-radius:50%;background:var(--fg);color:var(--bg);
+  font-size:28px;line-height:1;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 6px 22px rgba(0,0,0,.6)}
+#add:active{transform:scale(.94)}
+
+/* ---------- écrans plein ---------- */
+.screen{position:fixed;inset:0;background:var(--bg);z-index:40;display:flex;flex-direction:column;
+  padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+.bar{display:flex;align-items:center;gap:14px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.bar .sp{flex:1}
+.bar button{font-size:12.5px;letter-spacing:.08em;color:var(--dim);padding:4px 2px}
+.bar button.pri{color:var(--fg)}
+.body{flex:1;overflow-y:auto;padding:18px 16px 40px;max-width:720px;width:100%;margin:0 auto}
+.frow{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.f{display:flex;flex-direction:column;gap:5px}
+.f label{font-size:11px;color:var(--dimmer);letter-spacing:.1em}
+.f input{border-bottom:1px solid var(--line);padding:5px 0;min-width:0}
+.f input:focus{border-color:var(--dim)}
+#e-date{width:12.5em}
+#e-num{width:4.5em}
+#e-heure{width:7em}
+#e-txt{width:100%;min-height:46vh;resize:none;line-height:1.6;padding:4px 0}
+.tools{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+.tools button{border:1px solid var(--line);border-radius:2px;padding:8px 12px;font-size:12px;color:var(--dim);letter-spacing:.05em}
+.tools button:active{color:var(--fg);border-color:var(--dim)}
+#e-med{display:flex;flex-direction:column;gap:10px;margin-top:16px}
+#e-med .item{border:1px solid var(--line);padding:10px;display:flex;gap:12px;align-items:center}
+#e-med .item img{width:64px;height:64px;object-fit:cover;flex:none}
+#e-med .item span{flex:1;font-size:12px;color:var(--dim);min-width:0;overflow:hidden;text-overflow:ellipsis}
+#e-med .item button{color:var(--warn);font-size:11px;letter-spacing:.08em}
+
+/* ---------- réglages ---------- */
+.sec{margin-bottom:34px}
+.sec h2{font-size:11.5px;letter-spacing:.18em;color:var(--dimmer);margin:0 0 14px;font-weight:400}
+.sec p{color:var(--dim);font-size:12.5px;margin:0 0 14px;line-height:1.6}
+.sec .f{margin-bottom:14px}
+.sec .f input{width:100%;max-width:420px}
+.log{font-size:11.5px;color:var(--dim);white-space:pre-wrap;margin-top:12px;line-height:1.6}
+.log.err{color:var(--warn)}
+</style>
+</head>
+<body>
+
+<div id="lock" class="hide">
+  <div class="t">journal</div>
+  <div id="dots"><i></i><i></i><i></i><i></i></div>
+  <div id="pad"></div>
+</div>
+
+<div id="app" class="hide">
+  <header>
+    <div class="hrow">
+      <h1 id="title">journal</h1>
+      <button class="icon" id="btn-set">réglages</button>
+    </div>
+    <div id="status"></div>
+  </header>
+  <nav id="years"></nav>
+  <main id="feed"></main>
+  <button id="add" aria-label="nouvelle entrée">+</button>
+</div>
+
+<div id="editor" class="screen hide">
+  <div class="bar">
+    <button id="e-cancel">annuler</button>
+    <div class="sp"></div>
+    <button id="e-del" class="hide">supprimer</button>
+    <button id="e-save" class="pri">enregistrer</button>
+  </div>
+  <div class="body">
+    <div class="frow">
+      <div class="f"><label>DATE</label><input id="e-date" type="date"></div>
+      <div class="f"><label>HEURE</label><input id="e-heure" type="time"></div>
+      <div class="f"><label>N°</label><input id="e-num" type="number" inputmode="numeric"></div>
+    </div>
+    <textarea id="e-txt" placeholder="…" spellcheck="true"></textarea>
+    <div class="tools">
+      <button id="e-photo">+ photo</button>
+      <button id="e-video">+ vidéo (lien)</button>
+    </div>
+    <div id="e-med"></div>
+    <input id="e-file" type="file" accept="image/*" class="hide">
+  </div>
+</div>
+
+<div id="settings" class="screen hide">
+  <div class="bar">
+    <button id="s-close">retour</button>
+    <div class="sp"></div>
+    <button id="s-save" class="pri">enregistrer</button>
+  </div>
+  <div class="body">
+    <div class="sec">
+      <h2>SYNCHRONISATION</h2>
+      <p>Tes entrées sont écrites dans un dépôt GitHub privé. Elles restent d'abord sur cet appareil : la synchro se fait dès qu'il y a du réseau.</p>
+      <div class="f"><label>COMPTE GITHUB</label><input id="s-owner" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="ton-pseudo"></div>
+      <div class="f"><label>DÉPÔT PRIVÉ</label><input id="s-repo" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="journal-data"></div>
+      <div class="f"><label>CLÉ D'ACCÈS</label><input id="s-token" type="password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="github_pat_…"></div>
+      <div class="tools">
+        <button id="s-test">tester la connexion</button>
+        <button id="s-sync">synchroniser maintenant</button>
+      </div>
+      <div class="log" id="s-log"></div>
+    </div>
+    <div class="sec">
+      <h2>CODE D'OUVERTURE</h2>
+      <p>Quatre chiffres demandés au lancement. Laisse vide pour ouvrir sans code.</p>
+      <div class="f"><label>CODE</label><input id="s-code" type="number" inputmode="numeric" maxlength="4" placeholder="••••"></div>
+    </div>
+    <div class="sec">
+      <h2>SAUVEGARDE</h2>
+      <p>Un fichier que tu gardes où tu veux, lisible sans cette application.</p>
+      <div class="tools">
+        <button id="s-exp-json">exporter (.json)</button>
+        <button id="s-exp-txt">exporter (.txt)</button>
+        <button id="s-imp">importer un .json</button>
+      </div>
+      <input id="s-file" type="file" accept="application/json,.json" class="hide">
+      <div class="log" id="s-log2"></div>
+    </div>
+    <div class="sec">
+      <h2>TITRE</h2>
+      <div class="f"><input id="s-title" placeholder="journal"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ======================= stockage local ======================= */
+let _db = null;
+function db(){
+  if(_db) return _db;
+  _db = new Promise((res, rej)=>{
+    const r = indexedDB.open("journal", 1);
+    r.onupgradeneeded = ()=>{ r.result.createObjectStore("kv"); };
+    r.onsuccess = ()=> res(r.result);
+    r.onerror  = ()=> rej(r.error);
+  });
+  return _db;
+}
+async function idbGet(k){
+  const d = await db();
+  return new Promise((res, rej)=>{
+    const q = d.transaction("kv").objectStore("kv").get(k);
+    q.onsuccess = ()=> res(q.result); q.onerror = ()=> rej(q.error);
+  });
+}
+async function idbSet(k, v){
+  const d = await db();
+  return new Promise((res, rej)=>{
+    const q = d.transaction("kv","readwrite").objectStore("kv").put(v, k);
+    q.onsuccess = ()=> res(); q.onerror = ()=> rej(q.error);
+  });
+}
+
+const CFG_KEY = "journal.cfg";
+function loadCfg(){
+  try { return Object.assign({owner:"",repo:"",token:"",codeHash:"",title:"journal"}, JSON.parse(localStorage.getItem(CFG_KEY)||"{}")); }
+  catch(e){ return {owner:"",repo:"",token:"",codeHash:"",title:"journal"}; }
+}
+function saveCfg(){ try{ localStorage.setItem(CFG_KEY, JSON.stringify(S.cfg)); }catch(e){} }
+
+/* ======================= état ======================= */
+const S = {
+  cfg: loadCfg(),
+  journal: { version:1, entries:[] },
+  sha: null,
+  dirty: false,
+  pendingMedia: [],   // chemins d'images à téléverser
+  year: null,         // filtre
+  editing: null,      // entrée en cours d'édition
+  draftMedia: [],
+  syncing: false
+};
+
+const $  = (s)=> document.querySelector(s);
+const $$ = (s)=> Array.from(document.querySelectorAll(s));
+const uid = ()=> Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+const esc = (s)=> String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ======================= base64 utf-8 ======================= */
+function utf8ToB64(str){
+  const b = new TextEncoder().encode(str);
+  let s = "", CH = 0x8000;
+  for(let i=0;i<b.length;i+=CH) s += String.fromCharCode.apply(null, b.subarray(i, i+CH));
+  return btoa(s);
+}
+function b64ToUtf8(b64){
+  const bin = atob(String(b64).replace(/\s/g,""));
+  const b = new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) b[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(b);
+}
+
+/* ======================= API GitHub ======================= */
+function ghHeaders(){
+  return { Authorization: "Bearer " + S.cfg.token, Accept: "application/vnd.github+json",
+           "X-GitHub-Api-Version": "2022-11-28" };
+}
+function ghUrl(path){
+  return "https://api.github.com/repos/" + encodeURIComponent(S.cfg.owner) + "/" +
+         encodeURIComponent(S.cfg.repo) + "/contents/" + path;
+}
+async function ghGet(path){
+  const r = await fetch(ghUrl(path), { headers: ghHeaders(), cache:"no-store" });
+  if(r.status === 404) return null;
+  if(!r.ok) throw new Error("github " + r.status + (r.status===401?" (clé refusée)":"") + (r.status===403?" (accès refusé)":""));
+  const j = await r.json();
+  let content = j.content || "";
+  if(!content && j.size > 0){
+    const r2 = await fetch(ghUrl(path), { headers: Object.assign(ghHeaders(), {Accept:"application/vnd.github.raw"}), cache:"no-store" });
+    if(!r2.ok) throw new Error("github " + r2.status);
+    return { sha:j.sha, text: await r2.text(), b64: null };
+  }
+  return { sha:j.sha, text: b64ToUtf8(content), b64: String(content).replace(/\s/g,"") };
+}
+async function ghPut(path, b64, sha, message){
+  const body = { message: message, content: b64 };
+  if(sha) body.sha = sha;
+  const r = await fetch(ghUrl(path), { method:"PUT", headers: ghHeaders(), body: JSON.stringify(body) });
+  if(r.status === 409 || r.status === 422) { const e = new Error("conflit"); e.conflict = true; throw e; }
+  if(!r.ok) throw new Error("github " + r.status);
+  return r.json();
+}
+
+/* ======================= synchro ======================= */
+function mergeJournals(a, b){
+  const map = new Map();
+  for(const e of (a.entries||[])) map.set(e.id, e);
+  for(const e of (b.entries||[])){
+    const cur = map.get(e.id);
+    if(!cur || (e.updatedAt||0) > (cur.updatedAt||0)) map.set(e.id, e);
+  }
+  const entries = Array.from(map.values());
+  entries.sort((x,y)=> (y.date||"").localeCompare(x.date||"") || (y.num||0)-(x.num||0));
+  return { version:1, entries: entries };
+}
+
+function configured(){ return !!(S.cfg.owner && S.cfg.repo && S.cfg.token); }
+
+async function persistLocal(){
+  await idbSet("journal", S.journal);
+  await idbSet("state", { sha:S.sha, dirty:S.dirty, pendingMedia:S.pendingMedia });
+}
+
+async function sync(force){
+  if(S.syncing || !configured()) return;
+  if(!navigator.onLine){ setStatus("hors ligne" + (S.dirty ? " · modifs en attente" : "")); return; }
+  S.syncing = true; setStatus("synchro…", "busy");
+  try{
+    // 1. images en attente
+    for(const path of S.pendingMedia.slice()){
+      const b64 = await idbGet("media:" + path);
+      if(!b64){ S.pendingMedia = S.pendingMedia.filter(p=>p!==path); continue; }
+      let sha = null;
+      try { const ex = await ghGet(path); if(ex) sha = ex.sha; } catch(e){}
+      await ghPut(path, b64, sha, "media " + path);
+      S.pendingMedia = S.pendingMedia.filter(p=>p!==path);
+    }
+    // 2. lecture distante + fusion
+    const remote = await ghGet("journal.json");
+    if(remote){
+      let parsed = null;
+      try { parsed = JSON.parse(remote.text); } catch(e){ throw new Error("journal.json illisible sur GitHub"); }
+      const before = JSON.stringify(S.journal.entries.length) + ":" + S.journal.entries.map(e=>e.updatedAt||0).reduce((a,b)=>a+b,0);
+      S.journal = mergeJournals(S.journal, parsed);
+      S.sha = remote.sha;
+      const after = JSON.stringify(S.journal.entries.length) + ":" + S.journal.entries.map(e=>e.updatedAt||0).reduce((a,b)=>a+b,0);
+      if(before !== after) render();
+      // rien de local à pousser ?
+      if(!S.dirty && !force && JSON.stringify(parsed.entries||[]).length === JSON.stringify(S.journal.entries).length){
+        await persistLocal(); setStatus("à jour"); S.syncing = false; return;
+      }
+    }
+    // 3. écriture
+    const text = JSON.stringify({ version:1, titre:S.cfg.title, entries:S.journal.entries }, null, 1);
+    try{
+      const res = await ghPut("journal.json", utf8ToB64(text), S.sha, "journal " + new Date().toISOString().slice(0,16).replace("T"," "));
+      S.sha = res.content.sha;
+    }catch(err){
+      if(err.conflict){
+        const again = await ghGet("journal.json");
+        if(again){ S.journal = mergeJournals(S.journal, JSON.parse(again.text)); S.sha = again.sha; }
+        const t2 = JSON.stringify({ version:1, titre:S.cfg.title, entries:S.journal.entries }, null, 1);
+        const res2 = await ghPut("journal.json", utf8ToB64(t2), S.sha, "journal (fusion)");
+        S.sha = res2.content.sha;
+        render();
+      } else throw err;
+    }
+    S.dirty = false;
+    await persistLocal();
+    setStatus("à jour");
+  }catch(e){
+    setStatus(String(e.message||e), "err");
+  }finally{
+    S.syncing = false;
+  }
+}
+
+function setStatus(txt, cls){
+  const el = $("#status");
+  el.textContent = txt || "";
+  el.className = cls || "";
+}
+function touch(){ S.dirty = true; persistLocal(); sync(); }
+
+/* ======================= rendu ======================= */
+function years(){
+  const set = new Set();
+  for(const e of S.journal.entries) if(!e.deleted && e.date) set.add(e.date.slice(0,4));
+  return Array.from(set).sort().reverse();
+}
+function visible(){
+  let list = S.journal.entries.filter(e=>!e.deleted);
+  if(S.year) list = list.filter(e=> (e.date||"").slice(0,4) === S.year);
+  list.sort((a,b)=> (b.date||"").localeCompare(a.date||"") || (b.num||0)-(a.num||0));
+  return list;
+}
+function linkify(t){
+  return esc(t).replace(/(https?:\/\/[^\s<]+)/g, m=>'<a href="'+m+'" target="_blank" rel="noreferrer">'+m+"</a>");
+}
+function renderYears(){
+  const ys = years(), nav = $("#years");
+  nav.innerHTML = "";
+  const mk = (label, val)=>{
+    const b = document.createElement("button");
+    b.textContent = label;
+    if(S.year === val) b.className = "on";
+    b.onclick = ()=>{ S.year = val; renderYears(); renderFeed(); window.scrollTo(0,0); };
+    return b;
+  };
+  nav.appendChild(mk("tout", null));
+  for(const y of ys) nav.appendChild(mk(y, y));
+}
+function renderFeed(){
+  const feed = $("#feed"), list = visible();
+  feed.innerHTML = "";
+  if(!list.length){
+    feed.innerHTML = '<div class="empty">' + (configured() ? "rien ici." : "aucune entrée.<br>ouvre les réglages pour connecter ton dépôt.") + "</div>";
+    return;
+  }
+  let curYear = null;
+  const frag = document.createDocumentFragment();
+  for(const e of list){
+    const y = (e.date||"").slice(0,4);
+    if(!S.year && y !== curYear){
+      curYear = y;
+      const h = document.createElement("div");
+      h.className = "yr"; h.textContent = y; h.id = "y" + y;
+      frag.appendChild(h);
+    }
+    frag.appendChild(renderEntry(e));
+  }
+  feed.appendChild(frag);
+}
+function renderEntry(e){
+  const art = document.createElement("article");
+  const meta = document.createElement("div");
+  meta.className = "meta";
+  meta.innerHTML = '<span>' + esc(e.date||"") + (e.heure ? " " + esc(e.heure) : "") + '</span><span class="n">' + esc(String(e.num ?? "")) + "</span>";
+  art.appendChild(meta);
+
+  if(e.texte){
+    const t = document.createElement("div");
+    t.className = "txt"; t.innerHTML = linkify(e.texte);
+    art.appendChild(t);
+  }
+  if(e.media && e.media.length){
+    const m = document.createElement("div"); m.className = "med";
+    for(const md of e.media) m.appendChild(renderMedia(md));
+    art.appendChild(m);
+  }
+  const act = document.createElement("div");
+  act.className = "act";
+  const bE = document.createElement("button"); bE.textContent = "éditer";
+  bE.onclick = ()=> openEditor(e);
+  const bD = document.createElement("button"); bD.textContent = "supprimer"; bD.className = "del";
+  bD.onclick = ()=>{
+    act.innerHTML = "";
+    const q = document.createElement("span"); q.className = "confirm"; q.textContent = "supprimer ?";
+    const yes = document.createElement("button"); yes.textContent = "oui"; yes.onclick = ()=> removeEntry(e);
+    const no  = document.createElement("button"); no.textContent = "non";  no.onclick = ()=> renderFeed();
+    act.append(q, yes, no);
+  };
+  act.append(bE, bD);
+  art.appendChild(act);
+  return art;
+}
+function renderMedia(md){
+  if(md.t === "yt"){
+    const a = document.createElement("div");
+    a.className = "yt";
+    a.innerHTML = '<img alt="" src="https://i.ytimg.com/vi/' + esc(md.v) + '/hqdefault.jpg"><span>▶ lire</span>';
+    const th = a.querySelector("img");
+    th.onerror = ()=>{ th.remove(); a.style.aspectRatio = "16/9"; };
+    a.onclick = ()=>{
+      a.innerHTML = '<iframe allow="accelerometer;autoplay;encrypted-media;picture-in-picture" allowfullscreen src="https://www.youtube-nocookie.com/embed/' + esc(md.v) + '?autoplay=1"></iframe>';
+      a.onclick = null;
+    };
+    return a;
+  }
+  if(md.t === "url"){
+    const img = document.createElement("img");
+    img.loading = "lazy"; img.src = md.v; img.alt = "";
+    return img;
+  }
+  const img = document.createElement("img");
+  img.loading = "lazy"; img.alt = "";
+  idbGet("media:" + md.v).then(async b64=>{
+    if(b64){ img.src = "data:image/jpeg;base64," + b64; return; }
+    if(!configured() || !navigator.onLine) return;
+    try{
+      const f = await ghGet(md.v);
+      if(f && f.b64){ await idbSet("media:" + md.v, f.b64); img.src = "data:image/jpeg;base64," + f.b64; }
+    }catch(err){}
+  });
+  return img;
+}
+function render(){ $("#title").textContent = S.cfg.title || "journal"; renderYears(); renderFeed(); }
+
+/* ======================= éditeur ======================= */
+function nextNum(){
+  let m = 0;
+  for(const e of S.journal.entries) if(!e.deleted && typeof e.num === "number" && e.num > m) m = e.num;
+  return m + 1;
+}
+function openEditor(entry){
+  S.editing = entry || null;
+  const now = new Date();
+  const pad = n=> String(n).padStart(2,"0");
+  $("#e-date").value  = entry ? (entry.date || "") : now.getFullYear() + "-" + pad(now.getMonth()+1) + "-" + pad(now.getDate());
+  $("#e-heure").value = entry ? (entry.heure || "") : pad(now.getHours()) + ":" + pad(now.getMinutes());
+  $("#e-num").value   = entry ? (entry.num ?? "") : nextNum();
+  $("#e-txt").value   = entry ? (entry.texte || "") : "";
+  S.draftMedia = entry && entry.media ? entry.media.map(m=>Object.assign({}, m)) : [];
+  $("#e-del").classList.toggle("hide", !entry);
+  renderDraftMedia();
+  $("#editor").classList.remove("hide");
+  if(!entry) setTimeout(()=> $("#e-txt").focus(), 60);
+}
+function closeEditor(){ $("#editor").classList.add("hide"); S.editing = null; S.draftMedia = []; }
+function renderDraftMedia(){
+  const box = $("#e-med"); box.innerHTML = "";
+  S.draftMedia.forEach((md, i)=>{
+    const row = document.createElement("div"); row.className = "item";
+    if(md.t === "yt"){
+      const im = document.createElement("img"); im.src = "https://i.ytimg.com/vi/" + md.v + "/default.jpg"; row.appendChild(im);
+      const s = document.createElement("span"); s.textContent = "vidéo " + md.v; row.appendChild(s);
+    } else if(md.t === "url"){
+      const im = document.createElement("img"); im.src = md.v; row.appendChild(im);
+      const s = document.createElement("span"); s.textContent = md.v; row.appendChild(s);
+    } else {
+      const im = document.createElement("img"); row.appendChild(im);
+      idbGet("media:" + md.v).then(b=>{ if(b) im.src = "data:image/jpeg;base64," + b; });
+      const s = document.createElement("span"); s.textContent = "photo"; row.appendChild(s);
+    }
+    const x = document.createElement("button"); x.textContent = "retirer";
+    x.onclick = ()=>{ S.draftMedia.splice(i,1); renderDraftMedia(); };
+    row.appendChild(x);
+    box.appendChild(row);
+  });
+}
+async function compress(file){
+  const bmp = await createImageBitmap(file);
+  const MAX = 1600;
+  let { width:w, height:h } = bmp;
+  const r = Math.min(1, MAX / Math.max(w, h));
+  w = Math.round(w * r); h = Math.round(h * r);
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  c.getContext("2d").drawImage(bmp, 0, 0, w, h);
+  const blob = await new Promise(res=> c.toBlob(res, "image/jpeg", 0.78));
+  const buf = new Uint8Array(await blob.arrayBuffer());
+  let s = "", CH = 0x8000;
+  for(let i=0;i<buf.length;i+=CH) s += String.fromCharCode.apply(null, buf.subarray(i, i+CH));
+  return btoa(s);
+}
+async function saveEntry(){
+  const texte = $("#e-txt").value.replace(/\s+$/,"");
+  const media = S.draftMedia.slice();
+  if(!texte && !media.length){ closeEditor(); return; }
+  const num = parseInt($("#e-num").value, 10);
+  const data = {
+    date: $("#e-date").value || new Date().toISOString().slice(0,10),
+    heure: $("#e-heure").value || "",
+    num: isNaN(num) ? nextNum() : num,
+    texte: texte, media: media, updatedAt: Date.now()
+  };
+  if(S.editing){ Object.assign(S.editing, data); }
+  else { S.journal.entries.push(Object.assign({ id: uid(), createdAt: Date.now(), deleted:false }, data)); }
+  closeEditor(); render(); touch();
+}
+function removeEntry(e){
+  e.deleted = true; e.updatedAt = Date.now();
+  render(); touch();
+}
+
+/* ======================= verrou ======================= */
+async function sha256(s){
+  const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,"0")).join("");
+}
+function buildPad(){
+  const pad = $("#pad"); pad.innerHTML = "";
+  const keys = ["1","2","3","4","5","6","7","8","9","","0","←"];
+  for(const k of keys){
+    const b = document.createElement("button");
+    b.textContent = k;
+    if(k === "") { b.className = "ghost"; b.disabled = true; }
+    if(k === "←") b.className = "ghost";
+    b.onclick = ()=> tap(k);
+    pad.appendChild(b);
+  }
+}
+let buf = "";
+function drawDots(){
+  $$("#dots i").forEach((d,i)=> d.classList.toggle("on", i < buf.length));
+}
+async function tap(k){
+  if(k === "") return;
+  if(k === "←"){ buf = buf.slice(0,-1); drawDots(); return; }
+  if(buf.length >= 4) return;
+  buf += k; drawDots();
+  if(buf.length === 4){
+    const h = await sha256(buf);
+    if(h === S.cfg.codeHash){ $("#lock").classList.add("hide"); $("#app").classList.remove("hide"); }
+    else { $("#lock").classList.add("bad"); setTimeout(()=>{ $("#lock").classList.remove("bad"); buf=""; drawDots(); }, 320); }
+  }
+}
+
+/* ======================= export / import ======================= */
+function download(name, text, type){
+  const b = new Blob([text], { type: type || "application/json" });
+  const u = URL.createObjectURL(b);
+  const a = document.createElement("a");
+  a.href = u; a.download = name; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ a.remove(); URL.revokeObjectURL(u); }, 1500);
+}
+async function exportJson(){
+  const entries = [];
+  for(const e of S.journal.entries){
+    if(e.deleted) continue;
+    const c = Object.assign({}, e);
+    if(c.media && c.media.length){
+      c.media = [];
+      for(const m of e.media){
+        if(m.t === "img"){
+          const b = await idbGet("media:" + m.v);
+          c.media.push(b ? { t:"img_inline", v:"data:image/jpeg;base64," + b } : m);
+        } else c.media.push(m);
+      }
+    }
+    entries.push(c);
+  }
+  entries.sort((a,b)=>(a.num||0)-(b.num||0));
+  download("journal-" + new Date().toISOString().slice(0,10) + ".json",
+    JSON.stringify({ titre:S.cfg.title, exporte_le:new Date().toISOString(), nb:entries.length, entries }, null, 1));
+}
+function exportTxt(){
+  const list = S.journal.entries.filter(e=>!e.deleted).slice().sort((a,b)=>(a.num||0)-(b.num||0));
+  const out = list.map(e=>{
+    const med = (e.media||[]).map(m=> m.t==="yt" ? "[vidéo https://youtu.be/"+m.v+"]" : "[image "+m.v+"]").join("\n");
+    return "── " + (e.num ?? "") + " · " + (e.date||"") + (e.heure ? " " + e.heure : "") + " ──\n\n" + (e.texte||"") + (med ? "\n\n"+med : "");
+  }).join("\n\n\n");
+  download("journal-" + new Date().toISOString().slice(0,10) + ".txt",
+    (S.cfg.title||"journal") + "\n\n\n" + out, "text/plain;charset=utf-8");
+}
+async function importJson(file){
+  const txt = await file.text();
+  const data = JSON.parse(txt);
+  const incoming = (data.entries || []).map(e=> Object.assign({
+    id: e.id || uid(), createdAt: e.createdAt || Date.now(), updatedAt: e.updatedAt || Date.now(), deleted: !!e.deleted
+  }, e));
+  for(const e of incoming){
+    if(e.media) e.media = e.media.map(m=>{
+      if(m.t === "img_inline"){
+        const path = "media/" + uid() + ".jpg";
+        const b64 = String(m.v).split(",")[1];
+        idbSet("media:" + path, b64); S.pendingMedia.push(path);
+        return { t:"img", v:path };
+      }
+      return m;
+    });
+  }
+  S.journal = mergeJournals(S.journal, { entries: incoming });
+  render(); touch();
+  $("#s-log2").textContent = incoming.length + " entrées importées.";
+}
+
+/* ======================= démarrage ======================= */
+async function boot(){
+  const j = await idbGet("journal");
+  if(j) S.journal = j;
+  const st = await idbGet("state");
+  if(st){ S.sha = st.sha || null; S.dirty = !!st.dirty; S.pendingMedia = st.pendingMedia || []; }
+
+  render();
+  buildPad();
+  if(S.cfg.codeHash){ $("#lock").classList.remove("hide"); }
+  else { $("#app").classList.remove("hide"); }
+
+  if(configured()) sync(); else setStatus("dépôt non connecté");
+
+  window.addEventListener("online", ()=> sync());
+  window.addEventListener("offline", ()=> setStatus("hors ligne" + (S.dirty ? " · modifs en attente" : "")));
+  document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState === "visible") sync(); });
+
+  if("serviceWorker" in navigator){
+    try { navigator.serviceWorker.register("sw.js"); } catch(e){}
+  }
+}
+
+/* ======================= branchements ======================= */
+$("#add").onclick      = ()=> openEditor(null);
+$("#e-cancel").onclick = closeEditor;
+$("#e-save").onclick   = saveEntry;
+$("#e-del").onclick    = ()=>{ if(S.editing){ const e = S.editing; closeEditor(); removeEntry(e); } };
+$("#e-photo").onclick  = ()=> $("#e-file").click();
+$("#e-file").onchange  = async (ev)=>{
+  const f = ev.target.files && ev.target.files[0];
+  ev.target.value = "";
+  if(!f) return;
+  try{
+    const b64 = await compress(f);
+    const path = "media/" + uid() + ".jpg";
+    await idbSet("media:" + path, b64);
+    S.pendingMedia.push(path);
+    S.draftMedia.push({ t:"img", v:path });
+    renderDraftMedia();
+  }catch(e){ alert("image illisible"); }
+};
+$("#e-video").onclick = ()=>{
+  const box = $("#e-med");
+  const row = document.createElement("div"); row.className = "item";
+  const inp = document.createElement("input");
+  inp.placeholder = "colle un lien youtube"; inp.style.flex = "1"; inp.style.borderBottom = "1px solid var(--line)";
+  const ok = document.createElement("button"); ok.textContent = "ajouter"; ok.style.color = "var(--fg)";
+  ok.onclick = ()=>{
+    const m = inp.value.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([\w-]{6,15})/);
+    if(m){ S.draftMedia.push({ t:"yt", v:m[1] }); renderDraftMedia(); }
+    else if(/^https?:\/\/\S+\.(jpe?g|png|gif|webp)/i.test(inp.value)){ S.draftMedia.push({ t:"url", v:inp.value.trim() }); renderDraftMedia(); }
+    else { inp.value = ""; inp.placeholder = "lien non reconnu"; }
+  };
+  row.append(inp, ok); box.appendChild(row); inp.focus();
+};
+
+$("#btn-set").onclick = ()=>{
+  $("#s-owner").value = S.cfg.owner; $("#s-repo").value = S.cfg.repo;
+  $("#s-token").value = S.cfg.token; $("#s-title").value = S.cfg.title || "journal";
+  $("#s-code").value = ""; $("#s-log").textContent = ""; $("#s-log2").textContent = "";
+  $("#settings").classList.remove("hide");
+};
+$("#s-close").onclick = ()=> $("#settings").classList.add("hide");
+$("#s-save").onclick  = async ()=>{
+  S.cfg.owner = $("#s-owner").value.trim();
+  S.cfg.repo  = $("#s-repo").value.trim();
+  S.cfg.token = $("#s-token").value.trim();
+  S.cfg.title = $("#s-title").value.trim() || "journal";
+  const code = $("#s-code").value.trim();
+  if(code){ if(/^\d{4}$/.test(code)) S.cfg.codeHash = await sha256(code); else { $("#s-log").textContent = "le code doit faire 4 chiffres."; $("#s-log").className = "log err"; return; } }
+  saveCfg(); render();
+  $("#settings").classList.add("hide");
+  sync(true);
+};
+$("#s-test").onclick = async ()=>{
+  const log = $("#s-log"); log.className = "log"; log.textContent = "test…";
+  const keep = { o:S.cfg.owner, r:S.cfg.repo, t:S.cfg.token };
+  S.cfg.owner = $("#s-owner").value.trim(); S.cfg.repo = $("#s-repo").value.trim(); S.cfg.token = $("#s-token").value.trim();
+  try{
+    const f = await ghGet("journal.json");
+    log.textContent = f ? ("connexion ok — journal.json trouvé (" + JSON.parse(f.text).entries.length + " entrées)")
+                        : "connexion ok — dépôt vide, le journal sera créé à la première entrée";
+  }catch(e){ log.className = "log err"; log.textContent = String(e.message||e); }
+  finally{ S.cfg.owner = keep.o; S.cfg.repo = keep.r; S.cfg.token = keep.t; }
+};
+$("#s-sync").onclick    = ()=>{ $("#settings").classList.add("hide"); sync(true); };
+$("#s-exp-json").onclick= exportJson;
+$("#s-exp-txt").onclick = exportTxt;
+$("#s-imp").onclick     = ()=> $("#s-file").click();
+$("#s-file").onchange   = async (ev)=>{
+  const f = ev.target.files && ev.target.files[0]; ev.target.value = "";
+  if(!f) return;
+  try{ await importJson(f); }
+  catch(e){ $("#s-log2").className = "log err"; $("#s-log2").textContent = String(e.message||e); }
+};
+
+boot();
+</script>
+</body>
+</html>
