@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0a0a0b">
+<meta name="theme-color" content="#ffffff" id="tc">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="robots" content="noindex,nofollow">
@@ -12,122 +12,134 @@
 <link rel="icon" href="icon-192.png">
 <style>
 :root{
-  --bg:#0a0a0b; --fg:#e6e4df; --dim:#76736c; --dimmer:#4a4842;
-  --line:#1d1d1f; --panel:#111112; --warn:#d98c5f;
-  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "DejaVu Sans Mono", monospace;
+  --bg:#ffffff; --fg:#1c1c1c; --soft:#555; --dim:#9a9a9a; --dimmer:#c4c4c4;
+  --line:#e8e8e8; --panel:#f6f6f6; --warn:#b23b2e; --knob:#fff; --track:#dcdcdc;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+:root[data-theme="dark"]{
+  --bg:#111112; --fg:#e9e7e3; --soft:#b3b0ab; --dim:#7d7a75; --dimmer:#4e4c48;
+  --line:#262628; --panel:#1a1a1c; --warn:#e08b7c; --knob:#e9e7e3; --track:#3a3a3d;
 }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0;background:var(--bg);color:var(--fg)}
 body{
-  font-family:var(--mono); font-size:14px; line-height:1.6;
+  font-family:var(--sans); font-size:16px; line-height:1.5;
   padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom);
-  overflow-wrap:break-word;
+  overflow-wrap:break-word; -webkit-font-smoothing:antialiased;
 }
 button,input,textarea,select{font:inherit;color:inherit;background:transparent;border:0;outline:0}
 button{cursor:pointer}
 a{color:inherit}
 .hide{display:none !important}
+svg{display:block}
 
 /* ---------- verrou ---------- */
 #lock{position:fixed;inset:0;background:var(--bg);z-index:60;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:26px;padding:24px}
-#lock .t{color:var(--dim);font-size:13px;letter-spacing:.14em}
+  align-items:center;justify-content:center;gap:28px;padding:24px}
+#lock .t{color:var(--dim);font-size:14px}
 #dots{display:flex;gap:16px}
 #dots i{width:11px;height:11px;border:1px solid var(--dim);border-radius:50%;display:block}
 #dots i.on{background:var(--fg);border-color:var(--fg)}
 #lock.bad #dots{animation:shake .3s}
 @keyframes shake{25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
-#pad{display:grid;grid-template-columns:repeat(3,68px);gap:12px}
-#pad button{height:60px;border:1px solid var(--line);border-radius:3px;font-size:19px;color:var(--fg)}
+#pad{display:grid;grid-template-columns:repeat(3,70px);gap:12px}
+#pad button{height:62px;border:1px solid var(--line);border-radius:4px;font-size:20px;color:var(--fg)}
 #pad button:active{background:var(--panel)}
-#pad button.ghost{border-color:transparent;color:var(--dim);font-size:13px}
+#pad button.ghost{border-color:transparent;color:var(--dim);font-size:15px}
 
 /* ---------- entête ---------- */
-header{position:sticky;top:0;z-index:20;background:var(--bg);
-  border-bottom:1px solid var(--line);padding:14px 16px 10px}
-.hrow{display:flex;align-items:baseline;gap:10px}
-h1{margin:0;font-size:15px;font-weight:600;letter-spacing:.02em;flex:1}
-#status{font-size:11px;color:var(--dimmer);letter-spacing:.06em;white-space:nowrap}
+header{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--line)}
+.hrow{display:flex;align-items:center;gap:14px;padding:15px 18px 11px;max-width:660px;margin:0 auto}
+h1{margin:0;font-size:17px;font-weight:700;flex:1;letter-spacing:-.01em}
+#status{font-size:11.5px;color:var(--dimmer);white-space:nowrap}
 #status.busy{color:var(--dim)}
 #status.err{color:var(--warn)}
-.icon{font-size:12px;color:var(--dim);padding:2px 6px;letter-spacing:.06em}
+.gear{color:var(--dim);padding:4px}
+.gear:active{color:var(--fg)}
+.sw{width:40px;height:22px;border-radius:11px;background:var(--track);position:relative;flex:none;
+  transition:background .18s}
+.sw i{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--knob);
+  box-shadow:0 1px 2px rgba(0,0,0,.3);transition:transform .18s;display:block}
+:root[data-theme="dark"] .sw i{transform:translateX(18px)}
+.statusline{max-width:660px;margin:0 auto;padding:0 18px 9px}
 
 /* ---------- barre des années ---------- */
 #years{position:sticky;top:0;z-index:19;background:var(--bg);border-bottom:1px solid var(--line);
-  display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;padding:8px 10px}
+  overflow-x:auto;scrollbar-width:none}
+#years .inner{display:flex;gap:3px;padding:9px 14px;max-width:660px;margin:0 auto}
 #years::-webkit-scrollbar{display:none}
-#years button{color:var(--dimmer);font-size:12.5px;padding:4px 8px;border-radius:2px;white-space:nowrap;letter-spacing:.04em}
-#years button.on{color:var(--bg);background:var(--fg)}
+#years button{color:var(--dim);font-size:13px;padding:4px 7px;border-radius:3px;white-space:nowrap}
+#years button.on{color:var(--fg);font-weight:700}
 
 /* ---------- feed ---------- */
-main{padding:6px 16px 120px;max-width:720px;margin:0 auto}
-.yr{color:var(--dimmer);font-size:12px;letter-spacing:.22em;margin:30px 0 4px;
-  border-bottom:1px solid var(--line);padding-bottom:6px}
-.yr:first-child{margin-top:14px}
-article{padding:20px 0;border-bottom:1px solid var(--line)}
-.meta{color:var(--dim);font-size:12px;letter-spacing:.05em;margin-bottom:10px;
-  display:flex;gap:10px;align-items:center}
-.meta .n{color:var(--fg)}
-.meta .sp{flex:1}
+main{padding:0 18px 130px;max-width:660px;margin:0 auto}
+.yr{color:var(--dimmer);font-size:12px;letter-spacing:.16em;margin:34px 0 0;
+  border-bottom:1px solid var(--line);padding-bottom:7px}
+article{padding:30px 0 34px;border-bottom:1px solid var(--line);position:relative}
+.d{font-weight:700;margin:0}
+.n{font-weight:700;margin:14px 0 14px}
 .txt{white-space:pre-wrap}
-.txt a{color:var(--dim);text-underline-offset:2px}
-.med{margin-top:14px;display:flex;flex-direction:column;gap:10px}
+.txt a{color:var(--soft)}
+.act{position:absolute;top:30px;right:0;display:flex;gap:14px;align-items:center}
+.act button{color:var(--dimmer);padding:2px;line-height:0}
+.act button:hover,.act button:active{color:var(--soft)}
+.act svg{width:15px;height:15px;stroke:currentColor;stroke-width:1.4;fill:none;
+  stroke-linecap:round;stroke-linejoin:round}
+.act .q{color:var(--warn);font-size:12.5px;line-height:1.2}
+.act .q svg{stroke:var(--warn)}
+.med{margin-top:16px;display:flex;flex-direction:column;gap:12px}
 .med img{max-width:100%;display:block;border:1px solid var(--line)}
-.yt{position:relative;border:1px solid var(--line);display:block;background:var(--panel)}
-.yt img{width:100%;display:block;border:0;opacity:.72}
+.yt{position:relative;border:1px solid var(--line);display:block;background:var(--panel);cursor:pointer}
+.yt img{width:100%;display:block;border:0}
 .yt span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-  color:var(--fg);font-size:12px;letter-spacing:.12em}
+  color:#fff;font-size:13px;text-shadow:0 1px 6px rgba(0,0,0,.8)}
 .yt iframe{width:100%;aspect-ratio:16/9;display:block;border:0}
-.act{margin-top:12px;display:flex;gap:14px}
-.act button{color:var(--dimmer);font-size:11.5px;letter-spacing:.08em}
-.act button:active{color:var(--fg)}
-.act .del{color:var(--dimmer)}
-.confirm{color:var(--warn);font-size:11.5px;letter-spacing:.08em}
-.empty{color:var(--dim);padding:60px 0;text-align:center;font-size:13px}
+.empty{color:var(--dim);padding:70px 0;text-align:center;font-size:14px;line-height:1.7}
 
 /* ---------- bouton + ---------- */
-#add{position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom));z-index:25;
+#add{position:fixed;right:20px;bottom:calc(20px + env(safe-area-inset-bottom));z-index:25;
   width:56px;height:56px;border-radius:50%;background:var(--fg);color:var(--bg);
-  font-size:28px;line-height:1;display:flex;align-items:center;justify-content:center;
-  box-shadow:0 6px 22px rgba(0,0,0,.6)}
+  font-size:29px;line-height:1;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 18px rgba(0,0,0,.22)}
 #add:active{transform:scale(.94)}
 
 /* ---------- écrans plein ---------- */
 .screen{position:fixed;inset:0;background:var(--bg);z-index:40;display:flex;flex-direction:column;
   padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
-.bar{display:flex;align-items:center;gap:14px;padding:14px 16px;border-bottom:1px solid var(--line)}
+.bar{display:flex;align-items:center;gap:16px;padding:14px 18px;border-bottom:1px solid var(--line);
+  max-width:660px;margin:0 auto;width:100%}
 .bar .sp{flex:1}
-.bar button{font-size:12.5px;letter-spacing:.08em;color:var(--dim);padding:4px 2px}
-.bar button.pri{color:var(--fg)}
-.body{flex:1;overflow-y:auto;padding:18px 16px 40px;max-width:720px;width:100%;margin:0 auto}
-.frow{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.bar button{font-size:14px;color:var(--soft);padding:4px 2px}
+.bar button.pri{color:var(--fg);font-weight:700}
+.bar button.dgr{color:var(--warn)}
+.body{flex:1;overflow-y:auto;padding:20px 18px 60px;max-width:660px;width:100%;margin:0 auto}
+.frow{display:flex;gap:18px;margin-bottom:20px;flex-wrap:wrap}
 .f{display:flex;flex-direction:column;gap:5px}
-.f label{font-size:11px;color:var(--dimmer);letter-spacing:.1em}
+.f label{font-size:11px;color:var(--dim);letter-spacing:.09em}
 .f input{border-bottom:1px solid var(--line);padding:5px 0;min-width:0}
-.f input:focus{border-color:var(--dim)}
+.f input:focus{border-color:var(--soft)}
 #e-date{width:12.5em}
-#e-num{width:4.5em}
-#e-heure{width:7em}
-#e-txt{width:100%;min-height:46vh;resize:none;line-height:1.6;padding:4px 0}
-.tools{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
-.tools button{border:1px solid var(--line);border-radius:2px;padding:8px 12px;font-size:12px;color:var(--dim);letter-spacing:.05em}
-.tools button:active{color:var(--fg);border-color:var(--dim)}
-#e-med{display:flex;flex-direction:column;gap:10px;margin-top:16px}
+#e-num{width:5em}
+#e-txt{width:100%;min-height:48vh;resize:none;line-height:1.5;padding:2px 0}
+.tools{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap}
+.tools button{border:1px solid var(--line);border-radius:3px;padding:8px 13px;font-size:13px;color:var(--soft)}
+.tools button:active{color:var(--fg);border-color:var(--soft)}
+#e-med{display:flex;flex-direction:column;gap:10px;margin-top:18px}
 #e-med .item{border:1px solid var(--line);padding:10px;display:flex;gap:12px;align-items:center}
-#e-med .item img{width:64px;height:64px;object-fit:cover;flex:none}
-#e-med .item span{flex:1;font-size:12px;color:var(--dim);min-width:0;overflow:hidden;text-overflow:ellipsis}
-#e-med .item button{color:var(--warn);font-size:11px;letter-spacing:.08em}
+#e-med .item img{width:60px;height:60px;object-fit:cover;flex:none}
+#e-med .item span{flex:1;font-size:13px;color:var(--dim);min-width:0;overflow:hidden;text-overflow:ellipsis}
+#e-med .item button{color:var(--warn);font-size:12px}
 
 /* ---------- réglages ---------- */
-.sec{margin-bottom:34px}
-.sec h2{font-size:11.5px;letter-spacing:.18em;color:var(--dimmer);margin:0 0 14px;font-weight:400}
-.sec p{color:var(--dim);font-size:12.5px;margin:0 0 14px;line-height:1.6}
-.sec .f{margin-bottom:14px}
-.sec .f input{width:100%;max-width:420px}
-#s-pastearea{width:100%;max-width:420px;min-height:120px;margin-top:14px;border:1px solid var(--line);
-  padding:10px;font-size:11.5px;line-height:1.5;color:var(--dim);resize:vertical}
-#s-pastearea:focus{border-color:var(--dim);color:var(--fg)}
-.log{font-size:11.5px;color:var(--dim);white-space:pre-wrap;margin-top:12px;line-height:1.6}
+.sec{margin-bottom:38px}
+.sec h2{font-size:11px;letter-spacing:.16em;color:var(--dim);margin:0 0 14px;font-weight:400}
+.sec p{color:var(--soft);font-size:13.5px;margin:0 0 16px;line-height:1.6}
+.sec .f{margin-bottom:15px}
+.sec .f input{width:100%;max-width:430px}
+#s-pastearea{width:100%;max-width:430px;min-height:120px;margin-top:14px;border:1px solid var(--line);
+  padding:10px;font-size:12px;line-height:1.5;color:var(--soft);resize:vertical;border-radius:3px}
+#s-pastearea:focus{border-color:var(--soft);color:var(--fg)}
+.log{font-size:13px;color:var(--soft);white-space:pre-wrap;margin-top:14px;line-height:1.6}
 .log.err{color:var(--warn)}
 </style>
 </head>
@@ -143,11 +155,12 @@ article{padding:20px 0;border-bottom:1px solid var(--line)}
   <header>
     <div class="hrow">
       <h1 id="title">journal</h1>
-      <button class="icon" id="btn-set">réglages</button>
+      <button class="sw" id="theme" aria-label="thème sombre"><i></i></button>
+      <button class="gear" id="btn-set">réglages</button>
     </div>
-    <div id="status"></div>
+    <div class="statusline"><span id="status"></span></div>
   </header>
-  <nav id="years"></nav>
+  <nav id="years"><div class="inner"></div></nav>
   <main id="feed"></main>
   <button id="add" aria-label="nouvelle entrée">+</button>
 </div>
@@ -156,19 +169,18 @@ article{padding:20px 0;border-bottom:1px solid var(--line)}
   <div class="bar">
     <button id="e-cancel">annuler</button>
     <div class="sp"></div>
-    <button id="e-del" class="hide">supprimer</button>
+    <button id="e-del" class="dgr hide">supprimer</button>
     <button id="e-save" class="pri">enregistrer</button>
   </div>
   <div class="body">
     <div class="frow">
       <div class="f"><label>DATE</label><input id="e-date" type="date"></div>
-      <div class="f"><label>HEURE</label><input id="e-heure" type="time"></div>
       <div class="f"><label>N°</label><input id="e-num" type="number" inputmode="numeric"></div>
     </div>
     <textarea id="e-txt" placeholder="…" spellcheck="true"></textarea>
     <div class="tools">
-      <button id="e-photo">+ photo</button>
-      <button id="e-video">+ vidéo (lien)</button>
+      <button id="e-photo">photo</button>
+      <button id="e-video">vidéo (lien)</button>
     </div>
     <div id="e-med"></div>
     <input id="e-file" type="file" accept="image/*" class="hide">
@@ -184,9 +196,9 @@ article{padding:20px 0;border-bottom:1px solid var(--line)}
   <div class="body">
     <div class="sec">
       <h2>SYNCHRONISATION</h2>
-      <p>Tes entrées sont écrites dans un dépôt GitHub privé. Elles restent d'abord sur cet appareil : la synchro se fait dès qu'il y a du réseau.</p>
+      <p>Les entrées sont écrites dans un dépôt GitHub privé. Elles restent d'abord sur cet appareil : la synchro se fait dès qu'il y a du réseau.</p>
       <div class="f"><label>COMPTE GITHUB</label><input id="s-owner" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="ton-pseudo"></div>
-      <div class="f"><label>DÉPÔT PRIVÉ</label><input id="s-repo" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="journal-data"></div>
+      <div class="f"><label>DÉPÔT PRIVÉ</label><input id="s-repo" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Journal-data"></div>
       <div class="f"><label>CLÉ D'ACCÈS</label><input id="s-token" type="password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="github_pat_…"></div>
       <div class="tools">
         <button id="s-test">tester la connexion</button>
@@ -196,8 +208,9 @@ article{padding:20px 0;border-bottom:1px solid var(--line)}
     </div>
     <div class="sec">
       <h2>CODE D'OUVERTURE</h2>
-      <p>Quatre chiffres demandés au lancement. Laisse vide pour ouvrir sans code.</p>
-      <div class="f"><label>CODE</label><input id="s-code" type="number" inputmode="numeric" maxlength="4" placeholder="••••"></div>
+      <p>Quatre chiffres demandés au lancement. Laisse vide pour ne rien changer, tape 0000 puis efface-le pour le retirer.</p>
+      <div class="f"><label>NOUVEAU CODE</label><input id="s-code" type="number" inputmode="numeric" placeholder="••••"></div>
+      <div class="tools"><button id="s-nocode">retirer le code</button></div>
     </div>
     <div class="sec">
       <h2>SAUVEGARDE</h2>
@@ -265,9 +278,9 @@ const S = {
   journal: { version:1, entries:[] },
   sha: null,
   dirty: false,
-  pendingMedia: [],   // chemins d'images à téléverser
-  year: null,         // filtre
-  editing: null,      // entrée en cours d'édition
+  pendingMedia: [],
+  year: null,
+  editing: null,
   draftMedia: [],
   syncing: false
 };
@@ -276,6 +289,28 @@ const $  = (s)=> document.querySelector(s);
 const $$ = (s)=> Array.from(document.querySelectorAll(s));
 const uid = ()=> Date.now().toString(36) + Math.random().toString(36).slice(2,8);
 const esc = (s)=> String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+const MOIS = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+function dateFr(iso){
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || "");
+  if(!m) return iso || "";
+  const j = +m[3];
+  return (j === 1 ? "1er" : j) + " " + MOIS[+m[2]-1] + " " + m[1];
+}
+
+/* ======================= thème ======================= */
+function applyTheme(t){
+  document.documentElement.dataset.theme = t;
+  const tc = document.getElementById("tc");
+  if(tc) tc.content = (t === "dark" ? "#111112" : "#ffffff");
+  try{ localStorage.setItem("journal.theme", t); }catch(e){}
+}
+function initTheme(){
+  let t = "light";
+  try{ t = localStorage.getItem("journal.theme") || "light"; }catch(e){}
+  applyTheme(t);
+}
+initTheme();
 
 /* ======================= base64 utf-8 ======================= */
 function utf8ToB64(str){
@@ -334,7 +369,6 @@ function mergeJournals(a, b){
   entries.sort((x,y)=> (y.date||"").localeCompare(x.date||"") || (y.num||0)-(x.num||0));
   return { version:1, entries: entries };
 }
-
 function configured(){ return !!(S.cfg.owner && S.cfg.repo && S.cfg.token); }
 
 async function persistLocal(){
@@ -342,12 +376,15 @@ async function persistLocal(){
   await idbSet("state", { sha:S.sha, dirty:S.dirty, pendingMedia:S.pendingMedia });
 }
 
+function signature(){
+  return S.journal.entries.length + ":" + S.journal.entries.reduce((a,e)=> a + (e.updatedAt||0), 0);
+}
+
 async function sync(force){
   if(S.syncing || !configured()) return;
-  if(!navigator.onLine){ setStatus("hors ligne" + (S.dirty ? " · modifs en attente" : "")); return; }
-  S.syncing = true; setStatus("synchro…", "busy");
+  if(!navigator.onLine){ setStatus("hors ligne" + (S.dirty ? " · modifications en attente" : "")); return; }
+  S.syncing = true; setStatus("synchronisation…", "busy");
   try{
-    // 1. images en attente
     for(const path of S.pendingMedia.slice()){
       const b64 = await idbGet("media:" + path);
       if(!b64){ S.pendingMedia = S.pendingMedia.filter(p=>p!==path); continue; }
@@ -356,22 +393,21 @@ async function sync(force){
       await ghPut(path, b64, sha, "media " + path);
       S.pendingMedia = S.pendingMedia.filter(p=>p!==path);
     }
-    // 2. lecture distante + fusion
     const remote = await ghGet("journal.json");
+    let identique = false;
     if(remote){
       let parsed = null;
       try { parsed = JSON.parse(remote.text); } catch(e){ throw new Error("journal.json illisible sur GitHub"); }
-      const before = JSON.stringify(S.journal.entries.length) + ":" + S.journal.entries.map(e=>e.updatedAt||0).reduce((a,b)=>a+b,0);
+      const avant = signature();
       S.journal = mergeJournals(S.journal, parsed);
       S.sha = remote.sha;
-      const after = JSON.stringify(S.journal.entries.length) + ":" + S.journal.entries.map(e=>e.updatedAt||0).reduce((a,b)=>a+b,0);
-      if(before !== after) render();
-      // rien de local à pousser ?
-      if(!S.dirty && !force && JSON.stringify(parsed.entries||[]).length === JSON.stringify(S.journal.entries).length){
-        await persistLocal(); setStatus("à jour"); S.syncing = false; return;
-      }
+      if(signature() !== avant) render();
+      identique = (parsed.entries||[]).length === S.journal.entries.length &&
+                  (parsed.entries||[]).reduce((a,e)=>a+(e.updatedAt||0),0) === S.journal.entries.reduce((a,e)=>a+(e.updatedAt||0),0);
     }
-    // 3. écriture
+    if(!S.dirty && !force && identique){
+      await persistLocal(); setStatus("à jour"); S.syncing = false; return;
+    }
     const text = JSON.stringify({ version:1, titre:S.cfg.title, entries:S.journal.entries }, null, 1);
     try{
       const res = await ghPut("journal.json", utf8ToB64(text), S.sha, "journal " + new Date().toISOString().slice(0,16).replace("T"," "));
@@ -404,6 +440,11 @@ function setStatus(txt, cls){
 function touch(){ S.dirty = true; persistLocal(); sync(); }
 
 /* ======================= rendu ======================= */
+const ICON_EDIT = '<svg viewBox="0 0 16 16"><path d="M11.6 1.9l2.5 2.5-8.4 8.4-3.2.7.7-3.2z"/></svg>';
+const ICON_DEL  = '<svg viewBox="0 0 16 16"><path d="M3 4.4h10M6.4 4.4V2.8h3.2v1.6M4.4 4.4l.7 8.8h5.8l.7-8.8"/></svg>';
+const ICON_OK   = '<svg viewBox="0 0 16 16"><path d="M3 8.6l3.4 3.4L13 4.6"/></svg>';
+const ICON_NO   = '<svg viewBox="0 0 16 16"><path d="M3.6 3.6l8.8 8.8M12.4 3.6l-8.8 8.8"/></svg>';
+
 function years(){
   const set = new Set();
   for(const e of S.journal.entries) if(!e.deleted && e.date) set.add(e.date.slice(0,4));
@@ -419,7 +460,7 @@ function linkify(t){
   return esc(t).replace(/(https?:\/\/[^\s<]+)/g, m=>'<a href="'+m+'" target="_blank" rel="noreferrer">'+m+"</a>");
 }
 function renderYears(){
-  const ys = years(), nav = $("#years");
+  const ys = years(), nav = $("#years .inner");
   nav.innerHTML = "";
   const mk = (label, val)=>{
     const b = document.createElement("button");
@@ -445,7 +486,7 @@ function renderFeed(){
     if(!S.year && y !== curYear){
       curYear = y;
       const h = document.createElement("div");
-      h.className = "yr"; h.textContent = y; h.id = "y" + y;
+      h.className = "yr"; h.textContent = y;
       frag.appendChild(h);
     }
     frag.appendChild(renderEntry(e));
@@ -454,10 +495,14 @@ function renderFeed(){
 }
 function renderEntry(e){
   const art = document.createElement("article");
-  const meta = document.createElement("div");
-  meta.className = "meta";
-  meta.innerHTML = '<span>' + esc(e.date||"") + (e.heure ? " " + esc(e.heure) : "") + '</span><span class="n">' + esc(String(e.num ?? "")) + "</span>";
-  art.appendChild(meta);
+
+  const d = document.createElement("div");
+  d.className = "d"; d.textContent = dateFr(e.date);
+  art.appendChild(d);
+
+  const n = document.createElement("div");
+  n.className = "n"; n.textContent = (e.num ?? "");
+  art.appendChild(n);
 
   if(e.texte){
     const t = document.createElement("div");
@@ -469,19 +514,26 @@ function renderEntry(e){
     for(const md of e.media) m.appendChild(renderMedia(md));
     art.appendChild(m);
   }
+
   const act = document.createElement("div");
   act.className = "act";
-  const bE = document.createElement("button"); bE.textContent = "éditer";
-  bE.onclick = ()=> openEditor(e);
-  const bD = document.createElement("button"); bD.textContent = "supprimer"; bD.className = "del";
-  bD.onclick = ()=>{
+  const normal = ()=>{
     act.innerHTML = "";
-    const q = document.createElement("span"); q.className = "confirm"; q.textContent = "supprimer ?";
-    const yes = document.createElement("button"); yes.textContent = "oui"; yes.onclick = ()=> removeEntry(e);
-    const no  = document.createElement("button"); no.textContent = "non";  no.onclick = ()=> renderFeed();
-    act.append(q, yes, no);
+    const bE = document.createElement("button");
+    bE.innerHTML = ICON_EDIT; bE.title = "modifier"; bE.setAttribute("aria-label","modifier");
+    bE.onclick = ()=> openEditor(e);
+    const bD = document.createElement("button");
+    bD.innerHTML = ICON_DEL; bD.title = "supprimer"; bD.setAttribute("aria-label","supprimer");
+    bD.onclick = ()=>{
+      act.innerHTML = "";
+      const q = document.createElement("span"); q.className = "q"; q.textContent = "supprimer ?";
+      const yes = document.createElement("button"); yes.className = "q"; yes.innerHTML = ICON_OK; yes.onclick = ()=> removeEntry(e);
+      const no  = document.createElement("button"); no.className = "q"; no.innerHTML = ICON_NO; no.onclick = normal;
+      act.append(q, yes, no);
+    };
+    act.append(bE, bD);
   };
-  act.append(bE, bD);
+  normal();
   art.appendChild(act);
   return art;
 }
@@ -527,10 +579,9 @@ function openEditor(entry){
   S.editing = entry || null;
   const now = new Date();
   const pad = n=> String(n).padStart(2,"0");
-  $("#e-date").value  = entry ? (entry.date || "") : now.getFullYear() + "-" + pad(now.getMonth()+1) + "-" + pad(now.getDate());
-  $("#e-heure").value = entry ? (entry.heure || "") : pad(now.getHours()) + ":" + pad(now.getMinutes());
-  $("#e-num").value   = entry ? (entry.num ?? "") : nextNum();
-  $("#e-txt").value   = entry ? (entry.texte || "") : "";
+  $("#e-date").value = entry ? (entry.date || "") : now.getFullYear() + "-" + pad(now.getMonth()+1) + "-" + pad(now.getDate());
+  $("#e-num").value  = entry ? (entry.num ?? "") : nextNum();
+  $("#e-txt").value  = entry ? (entry.texte || "") : "";
   S.draftMedia = entry && entry.media ? entry.media.map(m=>Object.assign({}, m)) : [];
   $("#e-del").classList.toggle("hide", !entry);
   renderDraftMedia();
@@ -580,7 +631,6 @@ async function saveEntry(){
   const num = parseInt($("#e-num").value, 10);
   const data = {
     date: $("#e-date").value || new Date().toISOString().slice(0,10),
-    heure: $("#e-heure").value || "",
     num: isNaN(num) ? nextNum() : num,
     texte: texte, media: media, updatedAt: Date.now()
   };
@@ -600,20 +650,17 @@ async function sha256(s){
 }
 function buildPad(){
   const pad = $("#pad"); pad.innerHTML = "";
-  const keys = ["1","2","3","4","5","6","7","8","9","","0","←"];
-  for(const k of keys){
+  for(const k of ["1","2","3","4","5","6","7","8","9","","0","←"]){
     const b = document.createElement("button");
     b.textContent = k;
-    if(k === "") { b.className = "ghost"; b.disabled = true; }
+    if(k === ""){ b.className = "ghost"; b.disabled = true; }
     if(k === "←") b.className = "ghost";
     b.onclick = ()=> tap(k);
     pad.appendChild(b);
   }
 }
 let buf = "";
-function drawDots(){
-  $$("#dots i").forEach((d,i)=> d.classList.toggle("on", i < buf.length));
-}
+function drawDots(){ $$("#dots i").forEach((d,i)=> d.classList.toggle("on", i < buf.length)); }
 async function tap(k){
   if(k === "") return;
   if(k === "←"){ buf = buf.slice(0,-1); drawDots(); return; }
@@ -658,7 +705,7 @@ function exportTxt(){
   const list = S.journal.entries.filter(e=>!e.deleted).slice().sort((a,b)=>(a.num||0)-(b.num||0));
   const out = list.map(e=>{
     const med = (e.media||[]).map(m=> m.t==="yt" ? "[vidéo https://youtu.be/"+m.v+"]" : "[image "+m.v+"]").join("\n");
-    return "── " + (e.num ?? "") + " · " + (e.date||"") + (e.heure ? " " + e.heure : "") + " ──\n\n" + (e.texte||"") + (med ? "\n\n"+med : "");
+    return dateFr(e.date) + "\n" + (e.num ?? "") + "\n\n" + (e.texte||"") + (med ? "\n\n"+med : "");
   }).join("\n\n\n");
   download("journal-" + new Date().toISOString().slice(0,10) + ".txt",
     (S.cfg.title||"journal") + "\n\n\n" + out, "text/plain;charset=utf-8");
@@ -666,8 +713,6 @@ function exportTxt(){
 async function importJson(src){
   const txt = typeof src === "string" ? src : await src.text();
   const data = JSON.parse(txt);
-  // identifiant stable : réimporter le même fichier ne crée pas de doublons,
-  // et updatedAt bas pour qu'une modification faite ici ne soit jamais écrasée par un réimport.
   const incoming = (data.entries || []).map(e=>{
     const o = Object.assign({}, e);
     o.id = e.id || (Number.isFinite(e.num) ? "n" + e.num : "h" + (String(e.date||"") + "|" + String(e.texte||"").slice(0,40)).replace(/\W+/g,"").slice(0,24));
@@ -681,8 +726,7 @@ async function importJson(src){
     if(e.media) e.media = e.media.map(m=>{
       if(m.t === "img_inline"){
         const path = "media/" + uid() + ".jpg";
-        const b64 = String(m.v).split(",")[1];
-        idbSet("media:" + path, b64); S.pendingMedia.push(path);
+        idbSet("media:" + path, String(m.v).split(",")[1]); S.pendingMedia.push(path);
         return { t:"img", v:path };
       }
       return m;
@@ -690,6 +734,7 @@ async function importJson(src){
   }
   S.journal = mergeJournals(S.journal, { entries: incoming });
   render(); touch();
+  $("#s-log2").className = "log";
   $("#s-log2").textContent = incoming.length + " entrées importées.";
 }
 
@@ -708,15 +753,14 @@ async function boot(){
   if(configured()) sync(); else setStatus("dépôt non connecté");
 
   window.addEventListener("online", ()=> sync());
-  window.addEventListener("offline", ()=> setStatus("hors ligne" + (S.dirty ? " · modifs en attente" : "")));
+  window.addEventListener("offline", ()=> setStatus("hors ligne" + (S.dirty ? " · modifications en attente" : "")));
   document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState === "visible") sync(); });
 
-  if("serviceWorker" in navigator){
-    try { navigator.serviceWorker.register("sw.js"); } catch(e){}
-  }
+  if("serviceWorker" in navigator){ try { navigator.serviceWorker.register("sw.js"); } catch(e){} }
 }
 
 /* ======================= branchements ======================= */
+$("#theme").onclick    = ()=> applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
 $("#add").onclick      = ()=> openEditor(null);
 $("#e-cancel").onclick = closeEditor;
 $("#e-save").onclick   = saveEntry;
@@ -733,7 +777,7 @@ $("#e-file").onchange  = async (ev)=>{
     S.pendingMedia.push(path);
     S.draftMedia.push({ t:"img", v:path });
     renderDraftMedia();
-  }catch(e){ alert("image illisible"); }
+  }catch(e){ $("#e-med").insertAdjacentHTML("beforeend", '<div class="item"><span>image illisible</span></div>'); }
 };
 $("#e-video").onclick = ()=>{
   const box = $("#e-med");
@@ -763,10 +807,17 @@ $("#s-save").onclick  = async ()=>{
   S.cfg.token = $("#s-token").value.trim();
   S.cfg.title = $("#s-title").value.trim() || "journal";
   const code = $("#s-code").value.trim();
-  if(code){ if(/^\d{4}$/.test(code)) S.cfg.codeHash = await sha256(code); else { $("#s-log").textContent = "le code doit faire 4 chiffres."; $("#s-log").className = "log err"; return; } }
+  if(code){
+    if(/^\d{4}$/.test(code)) S.cfg.codeHash = await sha256(code);
+    else { $("#s-log").className = "log err"; $("#s-log").textContent = "le code doit faire 4 chiffres."; return; }
+  }
   saveCfg(); render();
   $("#settings").classList.add("hide");
   sync(true);
+};
+$("#s-nocode").onclick = ()=>{
+  S.cfg.codeHash = ""; saveCfg();
+  $("#s-log").className = "log"; $("#s-log").textContent = "code retiré.";
 };
 $("#s-test").onclick = async ()=>{
   const log = $("#s-log"); log.className = "log"; log.textContent = "test…";
@@ -787,10 +838,8 @@ $("#s-paste").onclick   = ()=>{ $("#s-pastebox").classList.toggle("hide"); $("#s
 $("#s-pasteok").onclick = async ()=>{
   const txt = $("#s-pastearea").value.trim();
   if(!txt) return;
-  try{
-    await importJson(txt);
-    $("#s-pastearea").value = ""; $("#s-pastebox").classList.add("hide");
-  }catch(e){ $("#s-log2").className = "log err"; $("#s-log2").textContent = "contenu illisible : " + String(e.message||e); }
+  try{ await importJson(txt); $("#s-pastearea").value = ""; $("#s-pastebox").classList.add("hide"); }
+  catch(e){ $("#s-log2").className = "log err"; $("#s-log2").textContent = "contenu illisible : " + String(e.message||e); }
 };
 $("#s-file").onchange   = async (ev)=>{
   const f = ev.target.files && ev.target.files[0]; ev.target.value = "";
