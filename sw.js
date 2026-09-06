@@ -1,5 +1,6 @@
-/* journal — cache de coquille, pour que l'appli s'ouvre sans réseau */
-const V = "journal-v1";
+/* journal — réseau d'abord, cache de secours : une mise à jour de l'appli arrive tout de suite,
+   et l'appli s'ouvre quand même sans réseau. */
+const V = "journal-v2";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e => {
@@ -18,12 +19,11 @@ self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return;
   if (url.origin !== self.location.origin) return;   // github, youtube : jamais mis en cache
   e.respondWith(
-    caches.match(e.request).then(hit => {
-      const net = fetch(e.request).then(r => {
-        if (r && r.ok) caches.open(V).then(c => c.put(e.request, r.clone()));
+    fetch(e.request)
+      .then(r => {
+        if (r && r.ok) { const copie = r.clone(); caches.open(V).then(c => c.put(e.request, copie)); }
         return r;
-      }).catch(() => hit);
-      return hit || net;
-    })
+      })
+      .catch(() => caches.match(e.request).then(hit => hit || caches.match("./index.html")))
   );
 });

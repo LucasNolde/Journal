@@ -53,7 +53,9 @@ header{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px s
 h1{margin:0;font-size:17px;font-weight:700;flex:1;letter-spacing:-.01em}
 #status{font-size:11.5px;color:var(--dimmer);white-space:nowrap}
 #status.busy{color:var(--dim)}
-#status.err{color:var(--warn)}
+#status.err{color:var(--warn);white-space:normal;font-size:13px;font-weight:700}
+#status.warn{color:var(--warn);white-space:normal;font-size:13px}
+#status.err::before{content:"⚠ "}
 .gear{color:var(--dim);padding:4px}
 .gear:active{color:var(--fg)}
 .sw{width:40px;height:22px;border-radius:11px;background:var(--track);position:relative;flex:none;
@@ -335,14 +337,25 @@ function ghUrl(path){
   return "https://api.github.com/repos/" + encodeURIComponent(S.cfg.owner) + "/" +
          encodeURIComponent(S.cfg.repo) + "/contents/" + path;
 }
+function erreurReseau(e){
+  if(e instanceof TypeError){
+    const x = new Error("impossible de joindre github — réseau, VPN, DNS privé ou bloqueur de pub ?");
+    x.reseau = true; return x;
+  }
+  return e;
+}
+async function ghFetch(url, init){
+  try { return await fetch(url, init); }
+  catch(e){ throw erreurReseau(e); }
+}
 async function ghGet(path){
-  const r = await fetch(ghUrl(path), { headers: ghHeaders(), cache:"no-store" });
+  const r = await ghFetch(ghUrl(path), { headers: ghHeaders(), cache:"no-store" });
   if(r.status === 404) return null;
   if(!r.ok) throw new Error("github " + r.status + (r.status===401?" (clé refusée)":"") + (r.status===403?" (accès refusé)":""));
   const j = await r.json();
   let content = j.content || "";
   if(!content && j.size > 0){
-    const r2 = await fetch(ghUrl(path), { headers: Object.assign(ghHeaders(), {Accept:"application/vnd.github.raw"}), cache:"no-store" });
+    const r2 = await ghFetch(ghUrl(path), { headers: Object.assign(ghHeaders(), {Accept:"application/vnd.github.raw"}), cache:"no-store" });
     if(!r2.ok) throw new Error("github " + r2.status);
     return { sha:j.sha, text: await r2.text(), b64: null };
   }
@@ -351,7 +364,7 @@ async function ghGet(path){
 async function ghPut(path, b64, sha, message){
   const body = { message: message, content: b64 };
   if(sha) body.sha = sha;
-  const r = await fetch(ghUrl(path), { method:"PUT", headers: ghHeaders(), body: JSON.stringify(body) });
+  const r = await ghFetch(ghUrl(path), { method:"PUT", headers: ghHeaders(), body: JSON.stringify(body) });
   if(r.status === 409 || r.status === 422) { const e = new Error("conflit"); e.conflict = true; throw e; }
   if(!r.ok) throw new Error("github " + r.status);
   return r.json();
@@ -476,7 +489,21 @@ function renderFeed(){
   const feed = $("#feed"), list = visible();
   feed.innerHTML = "";
   if(!list.length){
-    feed.innerHTML = '<div class="empty">' + (configured() ? "rien ici." : "aucune entrée.<br>ouvre les réglages pour connecter ton dépôt.") + "</div>";
+    feed.innerHTML = "";
+    const div = document.createElement("div");
+    div.className = "empty";
+    if(configured()){
+      div.textContent = S.year ? "rien en " + S.year + "." : "rien ici pour l'instant.";
+      feed.appendChild(div);
+    } else {
+      div.innerHTML = "aucune entrée sur cet appareil.<br>connecte ton dépôt pour les récupérer.";
+      const b = document.createElement("button");
+      b.textContent = "ouvrir les réglages";
+      b.style.cssText = "margin-top:18px;border:1px solid var(--line);border-radius:3px;padding:9px 15px;font-size:13px;color:var(--soft)";
+      b.onclick = ()=> openSettings();
+      div.appendChild(document.createElement("br")); div.appendChild(b);
+      feed.appendChild(div);
+    }
     return;
   }
   let curYear = null;
@@ -750,13 +777,19 @@ async function boot(){
   if(S.cfg.codeHash){ $("#lock").classList.remove("hide"); }
   else { $("#app").classList.remove("hide"); }
 
-  if(configured()) sync(); else setStatus("dépôt non connecté");
+  if(configured()) sync();
+  else setStatus(S.journal.entries.length ? "dépôt non connecté — tes entrées sont sur cet appareil seulement" : "dépôt non connecté — ouvre les réglages", "warn");
 
   window.addEventListener("online", ()=> sync());
   window.addEventListener("offline", ()=> setStatus("hors ligne" + (S.dirty ? " · modifications en attente" : "")));
   document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState === "visible") sync(); });
 
-  if("serviceWorker" in navigator){ try { navigator.serviceWorker.register("sw.js"); } catch(e){} }
+  if("serviceWorker" in navigator){
+    try {
+      const reg = await navigator.serviceWorker.register("sw.js", { updateViaCache: "none" });
+      reg.update();
+    } catch(e){}
+  }
 }
 
 /* ======================= branchements ======================= */
@@ -794,22 +827,32 @@ $("#e-video").onclick = ()=>{
   row.append(inp, ok); box.appendChild(row); inp.focus();
 };
 
-$("#btn-set").onclick = ()=>{
-  $("#s-owner").value = S.cfg.owner; $("#s-repo").value = S.cfg.repo;
-  $("#s-token").value = S.cfg.token; $("#s-title").value = S.cfg.title || "journal";
+function openSettings(){
+  $("#s-owner").value = S.cfg.owner || ""; $("#s-repo").value = S.cfg.repo || "";
+  $("#s-token").value = S.cfg.token || ""; $("#s-title").value = S.cfg.title || "journal";
   $("#s-code").value = ""; $("#s-log").textContent = ""; $("#s-log2").textContent = "";
+  $("#s-log").className = "log"; $("#s-log2").className = "log";
   $("#settings").classList.remove("hide");
-};
+}
+window.openSettings = openSettings;
+$("#btn-set").onclick = openSettings;
 $("#s-close").onclick = ()=> $("#settings").classList.add("hide");
 $("#s-save").onclick  = async ()=>{
-  S.cfg.owner = $("#s-owner").value.trim();
-  S.cfg.repo  = $("#s-repo").value.trim();
-  S.cfg.token = $("#s-token").value.trim();
-  S.cfg.title = $("#s-title").value.trim() || "journal";
+  // un champ laissé vide veut dire « inchangé » : on n'efface jamais une connexion qui marche
+  const garde = (v, actuel)=> v.trim() ? v.trim() : actuel;
+  S.cfg.owner = garde($("#s-owner").value, S.cfg.owner);
+  S.cfg.repo  = garde($("#s-repo").value,  S.cfg.repo);
+  S.cfg.token = garde($("#s-token").value, S.cfg.token);
+  S.cfg.title = $("#s-title").value.trim() || S.cfg.title || "journal";
   const code = $("#s-code").value.trim();
   if(code){
     if(/^\d{4}$/.test(code)) S.cfg.codeHash = await sha256(code);
     else { $("#s-log").className = "log err"; $("#s-log").textContent = "le code doit faire 4 chiffres."; return; }
+  }
+  if(S.cfg.token && /[^\x20-\x7E]/.test(S.cfg.token)){
+    $("#s-log").className = "log err";
+    $("#s-log").textContent = "la clé contient un caractère invisible que le navigateur refuse d'envoyer.\nrecopie-la (ou recrée-la sur github) puis réessaie.";
+    return;
   }
   saveCfg(); render();
   $("#settings").classList.add("hide");
@@ -820,14 +863,57 @@ $("#s-nocode").onclick = ()=>{
   $("#s-log").className = "log"; $("#s-log").textContent = "code retiré.";
 };
 $("#s-test").onclick = async ()=>{
-  const log = $("#s-log"); log.className = "log"; log.textContent = "test…";
+  const log = $("#s-log"); log.className = "log";
+  const lignes = [];
+  const dire = (t)=>{ lignes.push(t); log.textContent = lignes.join("\n"); };
+
+  dire("1. appareil en ligne : " + (navigator.onLine ? "oui" : "NON"));
+
+  try{
+    const r = await fetch("https://api.github.com/rate_limit", { cache:"no-store" });
+    dire("2. github joignable : oui (" + r.status + ")");
+  }catch(e){
+    log.className = "log err";
+    dire("2. github INJOIGNABLE depuis cet appareil.");
+    dire("   Ce n'est pas la clé : la requête ne sort pas.");
+    dire("   Regarde du côté d'un VPN, d'un bloqueur de pub,");
+    dire("   d'un DNS privé, ou du wifi utilisé.");
+    return;
+  }
+
   const keep = { o:S.cfg.owner, r:S.cfg.repo, t:S.cfg.token };
-  S.cfg.owner = $("#s-owner").value.trim(); S.cfg.repo = $("#s-repo").value.trim(); S.cfg.token = $("#s-token").value.trim();
+  S.cfg.owner = $("#s-owner").value.trim() || S.cfg.owner;
+  S.cfg.repo  = $("#s-repo").value.trim()  || S.cfg.repo;
+  S.cfg.token = $("#s-token").value.trim() || S.cfg.token;
+
+  // état des trois champs, sans jamais afficher la clé elle-même
+  const bizarre = (v)=> /[^\x20-\x7E]/.test(v) ? " ⚠ caractère inhabituel" : "";
+  dire("3. compte « " + S.cfg.owner + " »" + bizarre(S.cfg.owner));
+  dire("   dépôt « " + S.cfg.repo + " »" + bizarre(S.cfg.repo));
+  dire("   clé : " + (S.cfg.token ? S.cfg.token.length + " caractères" + bizarre(S.cfg.token) : "VIDE"));
+  if(!S.cfg.owner || !S.cfg.repo || !S.cfg.token){
+    log.className = "log err";
+    dire("   Un champ est vide : remplis-le puis enregistre.");
+    S.cfg.owner = keep.o; S.cfg.repo = keep.r; S.cfg.token = keep.t;
+    return;
+  }
+  if(bizarre(S.cfg.token)){
+    log.className = "log err";
+    dire("   La clé contient un caractère que le navigateur refuse");
+    dire("   d'envoyer (espace insécable, guillemet courbe…).");
+    dire("   Recopie-la, ou recrée-la sur github.");
+  }
   try{
     const f = await ghGet("journal.json");
-    log.textContent = f ? ("connexion ok — journal.json trouvé (" + JSON.parse(f.text).entries.length + " entrées)")
-                        : "connexion ok — dépôt vide, le journal sera créé à la première entrée";
-  }catch(e){ log.className = "log err"; log.textContent = String(e.message||e); }
+    dire(f ? ("4. ok — journal.json trouvé, " + JSON.parse(f.text).entries.length + " entrées")
+           : "4. ok — dépôt accessible, journal.json pas encore créé");
+  }catch(e){
+    log.className = "log err";
+    dire("4. " + String(e.message||e));
+    if(/401/.test(String(e.message))) dire("   La clé est refusée : recrée-la.");
+    if(/404/.test(String(e.message))) dire("   Dépôt introuvable : vérifie le nom exact,");
+    if(/404/.test(String(e.message))) dire("   et que la clé a bien accès à CE dépôt.");
+  }
   finally{ S.cfg.owner = keep.o; S.cfg.repo = keep.r; S.cfg.token = keep.t; }
 };
 $("#s-sync").onclick    = ()=>{ $("#settings").classList.add("hide"); sync(true); };
