@@ -120,6 +120,8 @@ article{padding:30px 0 34px;border-bottom:1px solid var(--line);position:relativ
 .f label{font-size:11px;color:var(--dim);letter-spacing:.09em}
 .f input{border-bottom:1px solid var(--line);padding:5px 0;min-width:0}
 .f input:focus{border-color:var(--soft)}
+.f input::placeholder{color:var(--dimmer);font-style:italic;opacity:1}
+.f input.vide{border-color:var(--warn)}
 #e-date{width:12.5em}
 #e-num{width:5em}
 #e-txt{width:100%;min-height:48vh;resize:none;line-height:1.5;padding:2px 0}
@@ -141,6 +143,8 @@ article{padding:30px 0 34px;border-bottom:1px solid var(--line);position:relativ
 #s-pastearea{width:100%;max-width:430px;min-height:120px;margin-top:14px;border:1px solid var(--line);
   padding:10px;font-size:12px;line-height:1.5;color:var(--soft);resize:vertical;border-radius:3px}
 #s-pastearea:focus{border-color:var(--soft);color:var(--fg)}
+#s-lien-txt{width:100%;max-width:430px;margin-top:14px;border:1px solid var(--line);border-radius:3px;
+  padding:10px;font-size:11.5px;color:var(--soft);display:block}
 .log{font-size:13px;color:var(--soft);white-space:pre-wrap;margin-top:14px;line-height:1.6}
 .log.err{color:var(--warn)}
 </style>
@@ -199,14 +203,24 @@ article{padding:30px 0 34px;border-bottom:1px solid var(--line);position:relativ
     <div class="sec">
       <h2>SYNCHRONISATION</h2>
       <p>Les entrées sont écrites dans un dépôt GitHub privé. Elles restent d'abord sur cet appareil : la synchro se fait dès qu'il y a du réseau.</p>
-      <div class="f"><label>COMPTE GITHUB</label><input id="s-owner" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="ton-pseudo"></div>
-      <div class="f"><label>DÉPÔT PRIVÉ</label><input id="s-repo" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Journal-data"></div>
-      <div class="f"><label>CLÉ D'ACCÈS</label><input id="s-token" type="password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="github_pat_…"></div>
+      <div class="f"><label>COMPTE GITHUB</label><input id="s-owner" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="ex. ton-pseudo"></div>
+      <div class="f"><label>DÉPÔT PRIVÉ</label><input id="s-repo" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="ex. mon-journal"></div>
+      <div class="f"><label>CLÉ D'ACCÈS</label><input id="s-token" type="password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="colle la clé ici"></div>
       <div class="tools">
         <button id="s-test">tester la connexion</button>
         <button id="s-sync">synchroniser maintenant</button>
       </div>
       <div class="log" id="s-log"></div>
+    </div>
+    <div class="sec">
+      <h2>AUTRE APPAREIL</h2>
+      <p>Pour mettre le journal sur ton téléphone sans rien retaper : fabrique un lien, ouvre-le sur l'autre appareil, il se configure tout seul.</p>
+      <div class="tools">
+        <button id="s-lien">lien de mise en route</button>
+        <button id="s-lien-cle" class="hide">inclure la clé</button>
+      </div>
+      <input id="s-lien-txt" class="hide" readonly spellcheck="false">
+      <div class="log" id="s-log3"></div>
     </div>
     <div class="sec">
       <h2>CODE D'OUVERTURE</h2>
@@ -765,8 +779,43 @@ async function importJson(src){
   $("#s-log2").textContent = incoming.length + " entrées importées.";
 }
 
+/* ======================= mise en route d'un autre appareil ======================= */
+function b64url(s){ return utf8ToB64(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,""); }
+function deB64url(s){
+  let t = s.replace(/-/g,"+").replace(/_/g,"/");
+  while(t.length % 4) t += "=";
+  return b64ToUtf8(t);
+}
+function lienMiseEnRoute(avecCle){
+  const d = { o:S.cfg.owner, r:S.cfg.repo, n:S.cfg.title };
+  if(avecCle) d.t = S.cfg.token;
+  return location.origin + location.pathname + "#cfg=" + b64url(JSON.stringify(d));
+}
+function lireLienMiseEnRoute(){
+  const m = /[#&]cfg=([A-Za-z0-9\-_]+)/.exec(location.hash || "");
+  if(!m) return null;
+  try { return JSON.parse(deB64url(m[1])); } catch(e){ return null; }
+}
+function effacerHash(){
+  try { history.replaceState(null, "", location.pathname + location.search); } catch(e){ location.hash = ""; }
+}
+
 /* ======================= démarrage ======================= */
 async function boot(){
+  // un lien de mise en route configure l'appareil sans rien taper
+  const recu = lireLienMiseEnRoute();
+  let messageAccueil = null;
+  if(recu){
+    if(recu.o) S.cfg.owner = recu.o;
+    if(recu.r) S.cfg.repo  = recu.r;
+    if(recu.t) S.cfg.token = recu.t;
+    if(recu.n) S.cfg.title = recu.n;
+    saveCfg();
+    effacerHash();
+    messageAccueil = recu.t ? "appareil connecté — récupération du journal…"
+                            : "compte et dépôt renseignés — il manque la clé d'accès (réglages)";
+  }
+
   const j = await idbGet("journal");
   if(j) S.journal = j;
   const st = await idbGet("state");
@@ -777,8 +826,10 @@ async function boot(){
   if(S.cfg.codeHash){ $("#lock").classList.remove("hide"); }
   else { $("#app").classList.remove("hide"); }
 
+  if(messageAccueil) setStatus(messageAccueil, configured() ? "busy" : "warn");
   if(configured()) sync();
-  else setStatus(S.journal.entries.length ? "dépôt non connecté — tes entrées sont sur cet appareil seulement" : "dépôt non connecté — ouvre les réglages", "warn");
+  else if(!messageAccueil) setStatus(S.journal.entries.length ? "dépôt non connecté — tes entrées sont sur cet appareil seulement" : "dépôt non connecté — ouvre les réglages", "warn");
+  if(messageAccueil && !configured()) setTimeout(openSettings, 400);
 
   window.addEventListener("online", ()=> sync());
   window.addEventListener("offline", ()=> setStatus("hors ligne" + (S.dirty ? " · modifications en attente" : "")));
@@ -831,7 +882,14 @@ function openSettings(){
   $("#s-owner").value = S.cfg.owner || ""; $("#s-repo").value = S.cfg.repo || "";
   $("#s-token").value = S.cfg.token || ""; $("#s-title").value = S.cfg.title || "journal";
   $("#s-code").value = ""; $("#s-log").textContent = ""; $("#s-log2").textContent = "";
+  $("#s-log3").textContent = ""; $("#s-log3").className = "log";
+  $("#s-lien-txt").classList.add("hide"); $("#s-lien-cle").classList.add("hide");
   $("#s-log").className = "log"; $("#s-log2").className = "log";
+  for(const id of ["#s-owner","#s-repo","#s-token"]){
+    const el = $(id);
+    el.classList.toggle("vide", !el.value.trim());
+    el.oninput = ()=> el.classList.toggle("vide", !el.value.trim());
+  }
   $("#settings").classList.remove("hide");
 }
 window.openSettings = openSettings;
@@ -916,6 +974,33 @@ $("#s-test").onclick = async ()=>{
   }
   finally{ S.cfg.owner = keep.o; S.cfg.repo = keep.r; S.cfg.token = keep.t; }
 };
+async function montrerLien(avecCle){
+  const champ = $("#s-lien-txt"), log = $("#s-log3");
+  if(!S.cfg.owner || !S.cfg.repo){
+    log.className = "log err"; log.textContent = "renseigne d'abord le compte et le dépôt, puis enregistre.";
+    return;
+  }
+  const url = lienMiseEnRoute(avecCle);
+  champ.value = url; champ.classList.remove("hide");
+  champ.focus(); champ.setSelectionRange(0, url.length);
+  let copie = false;
+  try { await navigator.clipboard.writeText(url); copie = true; } catch(e){
+    try { copie = document.execCommand("copy"); } catch(e2){}
+  }
+  log.className = "log";
+  if(avecCle){
+    log.textContent = (copie ? "Lien copié." : "Lien ci-dessus (sélectionné, Ctrl+C).") +
+      "\nIl contient ta clé d'accès : ouvre-le sur ton autre appareil, puis ne le laisse pas traîner." +
+      "\nEn cas de doute, révoque la clé sur github et refais-en une.";
+    $("#s-lien-cle").classList.add("hide");
+  } else {
+    log.textContent = (copie ? "Lien copié." : "Lien ci-dessus (sélectionné, Ctrl+C).") +
+      "\nIl renseigne le compte et le dépôt. Il faudra coller la clé sur l'autre appareil.";
+    $("#s-lien-cle").classList.remove("hide");
+  }
+}
+$("#s-lien").onclick     = ()=> montrerLien(false);
+$("#s-lien-cle").onclick = ()=> montrerLien(true);
 $("#s-sync").onclick    = ()=>{ $("#settings").classList.add("hide"); sync(true); };
 $("#s-exp-json").onclick= exportJson;
 $("#s-exp-txt").onclick = exportTxt;
